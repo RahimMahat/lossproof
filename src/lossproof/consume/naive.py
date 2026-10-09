@@ -23,6 +23,7 @@ from lossproof.consume.events import Change, fold_by_arrival, parse
 log = logging.getLogger(__name__)
 SUFFIX = "naive"
 schema = lake.arrow_schema
+TABLE_NAMES = tuple(lake.TABLES)
 BATCH = 2000
 
 

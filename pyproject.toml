@@ -11,6 +11,7 @@ dependencies = [
     "awslambdaric>=4.2.0",
     "boto3>=1.40",
     "confluent-kafka>=2.16.0",
+    "dbt-duckdb[glue]>=1.11.0",
     "psycopg[binary]>=3.2",
     "pyiceberg[glue,pyarrow]>=0.12.0",
     "typer>=0.27.3",

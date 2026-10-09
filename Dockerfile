@@ -8,4 +8,7 @@ RUN uv sync --locked --no-dev --no-install-project
 COPY README.md ./
 COPY src ./src
 RUN uv sync --locked --no-dev
+# DuckDB's S3 and Iceberg readers, installed now so a Lambda needs neither a network nor a writable home.
+RUN python -c "import duckdb; c = duckdb.connect(); c.execute(\"set extension_directory='/opt/duckdb'\"); c.execute('install httpfs'); c.execute('install iceberg')"
+COPY dbt ./dbt
 ENTRYPOINT ["lossproof"]

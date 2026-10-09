@@ -29,11 +29,12 @@ def maintain() -> dict[str, Any]:
     out: dict[str, Any] = {}
     for t in lake.TABLES:
         tbl = cat.load_table(lake.table_name(t, CONSUMER))
-        files, snapshots = tbl.inspect.files().num_rows, len(tbl.snapshots())
+        files = tbl.inspect.files().num_rows
         try:
             if files > MAX_FILES:
                 # ponytail: rewrites the whole table in memory; rewrite per partition once tables outgrow RAM.
                 tbl.overwrite(tbl.scan().to_arrow())
+            snapshots = len(tbl.refresh().snapshots())
             tbl.maintenance.expire_snapshots().older_than(datetime.now(UTC) - KEEP_SNAPSHOTS_FOR).commit()
         except (CommitFailedException, ValidationException):
             # The consumer committed while this was being prepared. Its data wins; maintenance
@@ -75,7 +76,32 @@ def put_metrics(values: dict[str, float]) -> None:
         log.exception("could not publish metrics")
 
 
-TASKS = {"maintain": maintain, "reconcile": reconcile}
+def marts() -> dict[str, Any]:
+    """Build and test the dbt marts from the lake as it is now. They land on S3 as Parquet, in Glue."""
+    import subprocess
+
+    cat = lake.catalog()
+    names = [*lake.TABLES, "customers_history"]
+    locations = {n: cat.load_table(lake.table_name(n, CONSUMER)).metadata_location for n in names}
+    cmd = ["dbt", "build", "--project-dir", config.DBT_DIR, "--profiles-dir", config.DBT_DIR]
+    cmd += [
+        "--target-path",
+        "/tmp/dbt/target",
+        "--log-path",
+        "/tmp/dbt/logs",
+        "--vars",
+        json.dumps(locations),
+    ]
+    done = subprocess.run(cmd, capture_output=True, text=True)
+    if done.returncode:
+        raise RuntimeError(done.stdout[-3000:] + done.stderr[-1000:])
+    with open("/tmp/dbt/target/run_results.json") as f:
+        results = json.load(f)["results"]
+    kinds = [r["unique_id"].split(".")[0] for r in results]
+    return {"models": kinds.count("model"), "tests_passed": kinds.count("test")}
+
+
+TASKS = {"maintain": maintain, "reconcile": reconcile, "marts": marts}
 
 
 def handler(event: dict[str, Any], context: object) -> dict[str, Any]:

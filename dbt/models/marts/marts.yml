@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: dim_customers
+    description: Customer versions over time (SCD type 2), built from the change history.
+    columns:
+      - name: customer_sk
+        description: One key per version.
+        data_tests: [unique, not_null]
+      - name: customer_id
+        data_tests: [not_null]
+      - name: valid_from
+        data_tests: [not_null]
+
+  - name: fct_orders
+    description: Live orders with line and payment summaries.
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - name: customer_sk
+        description: The customer's current version. Every order must have one.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customers')
+                field: customer_sk

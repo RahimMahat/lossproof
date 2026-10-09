@@ -1,0 +1,17 @@
+lossproof:
+  target: lake
+  outputs:
+    lake:
+      type: duckdb
+      path: ":memory:"
+      extensions: [httpfs, iceberg]
+      settings:
+        extension_directory: /opt/duckdb   # installed in the image
+      secrets:
+        - type: s3   # the emulator accepts any credentials
+          key_id: test
+          secret: test
+          region: us-east-1
+          endpoint: "{{ env_var('LOSSPROOF_S3_HOST', 'floci:4566') }}"
+          url_style: path
+          use_ssl: false

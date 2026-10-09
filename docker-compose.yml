@@ -35,11 +35,15 @@ services:
     profiles: [pipeline]
     environment: &app-env
       AWS_ENDPOINT_URL: http://floci:4566
+      AWS_ACCESS_KEY_ID: test          # Floci accepts anything; dbt's Glue registration needs something
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: us-east-1
       LOSSPROOF_KAFKA: ${LOSSPROOF_KAFKA:-}
       LOSSPROOF_PG_HOST: ${LOSSPROOF_PG_HOST:-}
       LOSSPROOF_RUN: main   # the long-lived stream; chaos scenarios override this per run
     volumes:
       - ./src:/app/src   # edit without rebuilding
+      - ./dbt:/app/dbt
       - ./results:/app/results
 
   # The long-lived correct consumer for the main stream. On AWS this is an ECS service.

@@ -8,7 +8,7 @@ change that produced the row).
 from __future__ import annotations
 
 import contextlib
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from typing import Any
 
 import pyarrow as pa
@@ -78,11 +78,11 @@ def table_name(table: str, suffix: str) -> str:
     return f"{DATABASE}.{table}_{suffix}_{config.RUN}"
 
 
-def reset(cat: Any, suffix: str, schema: Callable[[str], pa.Schema]) -> None:
+def reset(cat: Any, suffix: str, tables: Iterable[str], schema: Callable[[str], pa.Schema]) -> None:
     """Drop and recreate one consumer's tables, empty."""
     from pyiceberg.exceptions import NoSuchTableError
 
-    for t in TABLES:
+    for t in tables:
         with contextlib.suppress(NoSuchTableError):
             cat.drop_table(table_name(t, suffix))
         cat.create_table(table_name(t, suffix), schema=schema(t))

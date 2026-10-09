@@ -12,6 +12,7 @@ PG_HOST = os.environ.get("LOSSPROOF_PG_HOST", "")
 PG_PORT = os.environ.get("LOSSPROOF_PG_PORT", "5432")
 CONNECT_URL = os.environ.get("LOSSPROOF_CONNECT", "http://connect:8083")
 
+DBT_DIR = os.environ.get("LOSSPROOF_DBT_DIR", "/app/dbt")
 SOURCE_SECRET = "lossproof/source-db"
 SEED = 7
 

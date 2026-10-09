@@ -107,7 +107,7 @@ def lake_reset(consumer: str) -> None:
     from lossproof import lake
 
     module = _consumer(consumer)
-    lake.reset(lake.catalog(), module.SUFFIX, module.schema)
+    lake.reset(lake.catalog(), module.SUFFIX, module.TABLE_NAMES, module.schema)
 
 
 @app.command("consume")

@@ -13,6 +13,9 @@
 
 8. If another writer (the maintenance task) commits first, the batch is read again from the
    lake's offsets and applied to the table as it now is.
+9. Every change to a customer is also appended to a history table, which the SCD2 dimension is
+   built from. That append is a separate commit made first, so a replay can repeat it; readers
+   keep one row per key and log position.
 
 Anything else that goes wrong stops the consumer. It restarts from the last commit.
 """
@@ -23,6 +26,7 @@ import json
 import logging
 import signal
 import time
+from collections.abc import Iterable
 from typing import Any
 
 import pyarrow as pa
@@ -37,7 +41,13 @@ OFFSETS = "lossproof.offsets"
 DLQ = "lossproof-dlq"
 
 
+HISTORY = ("customers",)  # tables whose every change is kept as well as the latest state
+TABLE_NAMES = (*lake.TABLES, *(f"{t}_history" for t in HISTORY))
+
+
 def schema(table: str) -> pa.Schema:
+    if table.endswith("_history"):
+        return schema(table.removesuffix("_history")).append(pa.field("_ts_ms", pa.int64()))
     cols = [
         (name, pa.int64() if pa.types.is_integer(t) else t) for name, t in lake.TABLES[table]["cols"].items()
     ]
@@ -58,14 +68,14 @@ def newer_than_lake(changes: dict[str, Change], lake_lsn: dict[str, int]) -> dic
     return {pk: c for pk, c in changes.items() if c.lsn >= lake_lsn.get(pk, -1)}
 
 
-def to_rows(table: str, changes: dict[str, Change]) -> list[dict[str, Any]]:
+def to_rows(table: str, changes: Iterable[Change]) -> list[dict[str, Any]]:
     pk_cols = lake.TABLES[table]["pk"]
     rows = []
-    for c in changes.values():
+    for c in changes:
         data = c.row if c.row is not None else dict(zip(pk_cols, c.pk.split("|"), strict=True))
         if c.row is None:
             data = {k: int(v) for k, v in data.items()}  # every key column in this schema is an integer
-        rows.append({**data, "_pk": c.pk, "_lsn": c.lsn, "_deleted": c.row is None})
+        rows.append({**data, "_pk": c.pk, "_lsn": c.lsn, "_deleted": c.row is None, "_ts_ms": c.ts_ms})
     return rows
 
 
@@ -95,7 +105,7 @@ def write(
         folded = newer_than_lake(
             folded, dict(zip(seen["_pk"].to_pylist(), seen["_lsn"].to_pylist(), strict=True))
         )
-    rows = to_rows(table, folded)
+    rows = [{k: v for k, v in r.items() if k != "_ts_ms"} for r in to_rows(table, folded.values())]
     add_new_columns(tbl, rows)
 
     purged: list[dict[str, Any]] = []
@@ -107,6 +117,13 @@ def write(
             for r in tbl.scan(row_filter=stale).to_arrow().to_pylist()
             if r["_pk"] not in folded
         ]
+
+    if table in HISTORY and (changes or purged):  # rule 9
+        history = cat.load_table(lake.table_name(f"{table}_history", SUFFIX))
+        now_ms = int(time.time() * 1000)
+        past = to_rows(table, changes) + [{**r, "_ts_ms": now_ms} for r in purged]
+        add_new_columns(history, past)
+        history.append(pa.Table.from_pylist(past, schema=history.schema().as_arrow()))
 
     merged = {**json.loads(tbl.properties.get(OFFSETS, "{}")), **offsets}
     arrow = tbl.schema().as_arrow()

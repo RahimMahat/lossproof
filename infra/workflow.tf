@@ -57,7 +57,7 @@ resource "aws_sfn_state_machine" "nightly" {
   role_arn = aws_iam_role.service["states"].arn
 
   definition = jsonencode({
-    Comment = "Compact the lake, then prove it still matches the source."
+    Comment = "Compact the lake, prove it still matches the source, then build the marts from it."
     StartAt = "Maintain"
     States = {
       Maintain = {
@@ -78,7 +78,14 @@ resource "aws_sfn_state_machine" "nightly" {
       Matches = {
         Type    = "Choice"
         Choices = [{ Variable = "$.reconcile.wrong_rows", NumericGreaterThan = 0, Next = "Diverged" }]
-        Default = "Done"
+        Default = "Marts"
+      }
+      Marts = {
+        Type       = "Task"
+        Resource   = aws_lambda_function.tasks.arn
+        Parameters = { task = "marts" }
+        ResultPath = "$.marts"
+        Next       = "Done"
       }
       Diverged = {
         Type  = "Fail"

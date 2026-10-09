@@ -25,9 +25,13 @@ def test_a_change_older_than_the_lake_row_is_dropped() -> None:
 
 def test_a_delete_becomes_a_tombstone_row_with_its_key_columns() -> None:
     deleted = Change(table="order_items", pk="5|2", lsn=30, row=None)
-    assert to_rows("order_items", {"5|2": deleted}) == [
-        {"order_id": 5, "line_no": 2, "_pk": "5|2", "_lsn": 30, "_deleted": True}
+    assert to_rows("order_items", [deleted]) == [
+        {"order_id": 5, "line_no": 2, "_pk": "5|2", "_lsn": 30, "_deleted": True, "_ts_ms": 0}
     ]
+
+
+def test_history_table_has_the_change_time() -> None:
+    assert schema("customers_history").names == [*schema("customers").names, "_ts_ms"]
 
 
 def test_lake_integers_are_64_bit() -> None:

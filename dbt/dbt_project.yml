@@ -1,0 +1,18 @@
+name: lossproof
+version: "1.0"
+profile: lossproof
+
+model-paths: [models]
+test-paths: [tests]
+
+# The marts task passes each lake table's current Iceberg metadata file as a variable
+# (customers, orders, order_items, payments, customers_history).
+
+models:
+  lossproof:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: external   # Parquet on S3, registered in the Glue catalogue for Athena
+      +glue_register: true
+      +glue_database: lossproof
