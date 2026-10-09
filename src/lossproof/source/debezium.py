@@ -3,17 +3,14 @@
 from __future__ import annotations
 
 import json
+import time
 import urllib.request
 from typing import Any
 
 from lossproof import config
 
 
-def connector_name(generation: int) -> str:
-    return f"lossproof-{config.RUN}-{generation}"
-
-
-def connector_config(generation: int) -> dict[str, str]:
+def connector_config(slot: str) -> dict[str, str]:
     c = config.source_credentials()
     return {
         "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
@@ -25,8 +22,8 @@ def connector_config(generation: int) -> dict[str, str]:
         "database.dbname": c["dbname"],
         "topic.prefix": config.TOPIC_PREFIX,
         "schema.include.list": "public",
-        "slot.name": f"lp_{config.RUN}_{generation}",
-        "publication.name": f"lp_{config.RUN}_{generation}",
+        "slot.name": slot,
+        "publication.name": slot,
         # Plain JSON values without the embedded schema: {"before", "after", "op", "source": {"lsn", ...}}
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "key.converter.schemas.enable": "false",
@@ -55,8 +52,15 @@ def register(generation: int = 1) -> Any:
 
     A new generation is a new connector with a new replication slot writing to the same topics:
     it starts with a snapshot of every row, as after a lost slot.
+
+    The name carries the time. Kafka Connect remembers a connector's position by name, and a
+    connector registered after a reset must not inherit the position of the one before it.
     """
-    return _call("PUT", f"/connectors/{connector_name(generation)}/config", connector_config(generation))
+    stamp = int(time.time())
+    slot = f"lp_{config.RUN}_{generation}_{stamp}"
+    return _call(
+        "PUT", f"/connectors/lossproof-{config.RUN}-{generation}-{stamp}/config", connector_config(slot)
+    )
 
 
 def remove_all() -> list[str]:

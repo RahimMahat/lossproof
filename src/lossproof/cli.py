@@ -38,11 +38,16 @@ def _drop_slots() -> None:
 def source_reset() -> None:
     """Empty the source database and start a fresh change stream for this run."""
     import psycopg
+    from confluent_kafka.admin import AdminClient
 
     from lossproof import config
     from lossproof.source import debezium
 
     _drop_slots()
+    admin = AdminClient({"bootstrap.servers": config.KAFKA_BOOTSTRAP})
+    stale = [t for t in admin.list_topics(timeout=10).topics if t.startswith(f"{config.TOPIC_PREFIX}.")]
+    for future in (admin.delete_topics(stale) if stale else {}).values():
+        future.result()
     with psycopg.connect(config.source_dsn()) as conn:
         conn.execute("drop schema public cascade")
         conn.execute("create schema public")
