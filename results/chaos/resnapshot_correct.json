@@ -1,0 +1,40 @@
+{
+  "consumer": "correct",
+  "source_lsn": "0/A314898",
+  "tables": {
+    "customers": {
+      "source_rows": 1987,
+      "lake_rows": 1987,
+      "missing": 0,
+      "ghost": 0,
+      "stale": 0,
+      "duplicate": 0
+    },
+    "orders": {
+      "source_rows": 3600,
+      "lake_rows": 3600,
+      "missing": 0,
+      "ghost": 0,
+      "stale": 0,
+      "duplicate": 0
+    },
+    "order_items": {
+      "source_rows": 8720,
+      "lake_rows": 8720,
+      "missing": 0,
+      "ghost": 0,
+      "stale": 0,
+      "duplicate": 0
+    },
+    "payments": {
+      "source_rows": 1673,
+      "lake_rows": 1673,
+      "missing": 0,
+      "ghost": 0,
+      "stale": 0,
+      "duplicate": 0
+    }
+  },
+  "source_rows": 15980,
+  "wrong_rows": 0
+}

@@ -1,0 +1,86 @@
+{
+  "scenario": "resnapshot",
+  "run": "resnapshot_1791513761",
+  "transactions": 20000,
+  "seed": 7,
+  "faults": 1,
+  "dead_letters": 0,
+  "consumers": {
+    "naive": {
+      "source_rows": 15980,
+      "wrong_rows": 991,
+      "tables": {
+        "customers": {
+          "source_rows": 1987,
+          "lake_rows": 1987,
+          "missing": 0,
+          "ghost": 0,
+          "stale": 0,
+          "duplicate": 0
+        },
+        "orders": {
+          "source_rows": 3600,
+          "lake_rows": 3827,
+          "missing": 0,
+          "ghost": 227,
+          "stale": 0,
+          "duplicate": 0
+        },
+        "order_items": {
+          "source_rows": 8720,
+          "lake_rows": 9313,
+          "missing": 0,
+          "ghost": 593,
+          "stale": 0,
+          "duplicate": 0
+        },
+        "payments": {
+          "source_rows": 1673,
+          "lake_rows": 1844,
+          "missing": 0,
+          "ghost": 171,
+          "stale": 0,
+          "duplicate": 0
+        }
+      }
+    },
+    "correct": {
+      "source_rows": 15980,
+      "wrong_rows": 0,
+      "tables": {
+        "customers": {
+          "source_rows": 1987,
+          "lake_rows": 1987,
+          "missing": 0,
+          "ghost": 0,
+          "stale": 0,
+          "duplicate": 0
+        },
+        "orders": {
+          "source_rows": 3600,
+          "lake_rows": 3600,
+          "missing": 0,
+          "ghost": 0,
+          "stale": 0,
+          "duplicate": 0
+        },
+        "order_items": {
+          "source_rows": 8720,
+          "lake_rows": 8720,
+          "missing": 0,
+          "ghost": 0,
+          "stale": 0,
+          "duplicate": 0
+        },
+        "payments": {
+          "source_rows": 1673,
+          "lake_rows": 1673,
+          "missing": 0,
+          "ghost": 0,
+          "stale": 0,
+          "duplicate": 0
+        }
+      }
+    }
+  }
+}

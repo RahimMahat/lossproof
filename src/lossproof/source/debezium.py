@@ -8,10 +8,12 @@ from typing import Any
 
 from lossproof import config
 
-CONNECTOR = "lossproof-source"
+
+def connector_name(generation: int) -> str:
+    return f"lossproof-{config.RUN}-{generation}"
 
 
-def connector_config() -> dict[str, str]:
+def connector_config(generation: int) -> dict[str, str]:
     c = config.source_credentials()
     return {
         "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
@@ -23,7 +25,8 @@ def connector_config() -> dict[str, str]:
         "database.dbname": c["dbname"],
         "topic.prefix": config.TOPIC_PREFIX,
         "schema.include.list": "public",
-        "slot.name": "lossproof",
+        "slot.name": f"lp_{config.RUN}_{generation}",
+        "publication.name": f"lp_{config.RUN}_{generation}",
         # Plain JSON values without the embedded schema: {"before", "after", "op", "source": {"lsn", ...}}
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
         "key.converter.schemas.enable": "false",
@@ -47,10 +50,22 @@ def _call(method: str, path: str, body: dict[str, Any] | None = None) -> Any:
         return json.loads(resp.read() or b"null")
 
 
-def register() -> Any:
-    """Create or update the connector. PUT is idempotent."""
-    return _call("PUT", f"/connectors/{CONNECTOR}/config", connector_config())
+def register(generation: int = 1) -> Any:
+    """Create or update the connector. PUT is idempotent.
+
+    A new generation is a new connector with a new replication slot writing to the same topics:
+    it starts with a snapshot of every row, as after a lost slot.
+    """
+    return _call("PUT", f"/connectors/{connector_name(generation)}/config", connector_config(generation))
+
+
+def remove_all() -> list[str]:
+    """Delete every connector. Their replication slots stay behind until dropped."""
+    names: list[str] = _call("GET", "/connectors")
+    for name in names:
+        _call("DELETE", f"/connectors/{name}")
+    return names
 
 
 def status() -> Any:
-    return _call("GET", f"/connectors/{CONNECTOR}/status")
+    return {name: _call("GET", f"/connectors/{name}/status") for name in _call("GET", "/connectors")}

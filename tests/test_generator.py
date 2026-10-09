@@ -43,3 +43,14 @@ def test_workload_is_valid_against_a_model() -> None:
             rows["order_items"] = {k for k in rows["order_items"] if k[0] != p[0]}
             rows["payments"] = {k for k in rows["payments"] if payment_order[k] != p[0]}
     assert verbs == {"insert", "update", "delete"}
+
+
+def test_schema_change_happens_once_and_only_later_statements_use_it() -> None:
+    txs = list(Workload(7, evolve_at=500).transactions(3000))
+    assert txs[500] == [(g.ADD_PHONE, ()), (g.WIDEN_QTY, ())]
+    assert txs[:500] == list(Workload(7).transactions(500))
+    before = {sql for tx in txs[:500] for sql, _ in tx}
+    after = {sql for tx in txs[501:] for sql, _ in tx}
+    assert not before & {g.INSERT_CUSTOMER_PHONE, g.SET_PHONE}
+    assert {g.INSERT_CUSTOMER_PHONE, g.SET_PHONE} <= after
+    assert any(p[3] == g.BULK_QTY for tx in txs[501:] for sql, p in tx if sql == g.INSERT_ITEM)

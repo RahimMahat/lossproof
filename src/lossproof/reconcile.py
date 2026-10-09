@@ -70,7 +70,8 @@ def run(suffix: str) -> dict[str, Any]:
         lsn = conn.execute("select pg_current_wal_lsn()::text").fetchone()[0]  # type: ignore[index]
         for t in lake.TABLES:
             columns, source = source_rows(conn, t)
-            lake_rows = [(r["_pk"], canonical(r, columns)) for r in lake.read(cat, t, suffix)]
+            live = [r for r in lake.read(cat, t, suffix) if not r.get("_deleted")]  # skip tombstones
+            lake_rows = [(r["_pk"], canonical(r, columns)) for r in live]
             tables[t] = diff(source, lake_rows)
     return {
         "consumer": suffix,

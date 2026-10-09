@@ -22,4 +22,4 @@ fi
 
 docker compose --profile pipeline up -d --build connect
 until docker compose exec -T connect curl -sf http://localhost:8083/connectors >/dev/null 2>&1; do sleep 2; done
-docker compose run --rm app source init
+docker compose run --rm app source reset

@@ -12,17 +12,20 @@ PG_HOST = os.environ.get("LOSSPROOF_PG_HOST", "")
 CONNECT_URL = os.environ.get("LOSSPROOF_CONNECT", "http://connect:8083")
 
 SOURCE_SECRET = "lossproof/source-db"
-TOPIC_PREFIX = "lp"
 SEED = 7
 
+# One run is one fresh stream: its own topics, consumer groups, connector, slot and lake tables.
+RUN = os.environ.get("LOSSPROOF_RUN", "dev")
+TOPIC_PREFIX = f"lp_{RUN}"
 
-def aws(service: str) -> Any:
+
+def aws(service: str, endpoint: str = AWS_ENDPOINT) -> Any:
     import boto3
 
     # Floci accepts any credentials.
     return boto3.client(
         service,
-        endpoint_url=AWS_ENDPOINT,
+        endpoint_url=endpoint,
         region_name="us-east-1",
         aws_access_key_id="test",
         aws_secret_access_key="test",

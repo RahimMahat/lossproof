@@ -8,6 +8,7 @@ change that produced the row).
 from __future__ import annotations
 
 import contextlib
+from collections.abc import Callable
 from typing import Any
 
 import pyarrow as pa
@@ -73,18 +74,18 @@ def catalog() -> Any:
 
 
 def table_name(table: str, suffix: str) -> str:
-    """Each consumer writes its own set of tables, e.g. ``lossproof.orders_naive``."""
-    return f"{DATABASE}.{table}_{suffix}"
+    """Each consumer of each run writes its own tables, e.g. ``lossproof.orders_naive_dev``."""
+    return f"{DATABASE}.{table}_{suffix}_{config.RUN}"
 
 
-def reset(cat: Any, suffix: str) -> None:
+def reset(cat: Any, suffix: str, schema: Callable[[str], pa.Schema]) -> None:
     """Drop and recreate one consumer's tables, empty."""
     from pyiceberg.exceptions import NoSuchTableError
 
     for t in TABLES:
         with contextlib.suppress(NoSuchTableError):
             cat.drop_table(table_name(t, suffix))
-        cat.create_table(table_name(t, suffix), schema=arrow_schema(t))
+        cat.create_table(table_name(t, suffix), schema=schema(t))
 
 
 def read(cat: Any, table: str, suffix: str) -> list[dict[str, Any]]:

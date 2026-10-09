@@ -15,6 +15,7 @@ class Change:
     pk: str
     lsn: int
     row: dict[str, Any] | None  # None means the row was deleted
+    snapshot: str = "false"  # Debezium's marker: "false" when streaming, "last" on a snapshot's final row
 
 
 def parse(topic: str, value: bytes | None) -> Change | None:
@@ -29,6 +30,7 @@ def parse(topic: str, value: bytes | None) -> Change | None:
         pk=lake.pk_of(table, event["before"] if deleted else event["after"]),
         lsn=int(event["source"]["lsn"]),
         row=None if deleted else event["after"],
+        snapshot=str(event["source"].get("snapshot") or "false"),
     )
 
 
