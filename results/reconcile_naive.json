@@ -1,0 +1,40 @@
+{
+  "consumer": "naive",
+  "source_lsn": "0/1BE1EC0",
+  "tables": {
+    "customers": {
+      "source_rows": 501,
+      "lake_rows": 501,
+      "missing": 0,
+      "ghost": 0,
+      "stale": 0,
+      "duplicate": 0
+    },
+    "orders": {
+      "source_rows": 971,
+      "lake_rows": 971,
+      "missing": 0,
+      "ghost": 0,
+      "stale": 0,
+      "duplicate": 0
+    },
+    "order_items": {
+      "source_rows": 2325,
+      "lake_rows": 2325,
+      "missing": 0,
+      "ghost": 0,
+      "stale": 0,
+      "duplicate": 0
+    },
+    "payments": {
+      "source_rows": 451,
+      "lake_rows": 451,
+      "missing": 0,
+      "ghost": 0,
+      "stale": 0,
+      "duplicate": 0
+    }
+  },
+  "source_rows": 4248,
+  "wrong_rows": 0
+}

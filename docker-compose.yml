@@ -1,0 +1,36 @@
+# Local AWS (Floci, MIT licence, no account needed). Floci starts RDS, MSK, Lambda and Athena as
+# sibling containers through the Docker socket.
+#   scripts/up.sh             start everything (Floci, Terraform, Debezium)
+#   docker compose run --rm app source generate
+#   scripts/down.sh           stop and delete everything
+services:
+  floci:
+    image: floci/floci:2.2.0
+    ports:
+      - "4566:4566"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # Kafka Connect with Debezium. On AWS this is MSK Connect. The broker address exists only after
+  # Terraform has created the MSK cluster, so this starts from scripts/up.sh, which writes .env.
+  connect:
+    image: quay.io/debezium/connect:3.2
+    profiles: [pipeline]
+    environment:
+      BOOTSTRAP_SERVERS: ${LOSSPROOF_KAFKA:-}
+      GROUP_ID: lossproof-connect
+      CONFIG_STORAGE_TOPIC: connect-configs
+      OFFSET_STORAGE_TOPIC: connect-offsets
+      STATUS_STORAGE_TOPIC: connect-status
+      HEAP_OPTS: -Xms256m -Xmx768m
+
+  app:
+    build: .
+    profiles: [pipeline]
+    environment:
+      AWS_ENDPOINT_URL: http://floci:4566
+      LOSSPROOF_KAFKA: ${LOSSPROOF_KAFKA:-}
+      LOSSPROOF_PG_HOST: ${LOSSPROOF_PG_HOST:-}
+    volumes:
+      - ./src:/app/src   # edit without rebuilding
+      - ./results:/app/results
