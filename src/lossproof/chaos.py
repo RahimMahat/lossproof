@@ -92,6 +92,13 @@ class Run:
             time.sleep(2)
         raise TimeoutError(f"{self.id}: stream did not drain in {timeout:.0f}s")
 
+    def check_connectors(self) -> None:
+        """A failed Debezium task also leaves the stream quiet, so quiet alone is not proof of a full run."""
+        for name, status in json.loads(self.app("source", "status")).items():
+            states = [status["connector"]["state"], *(t["state"] for t in status["tasks"])]
+            if set(states) != {"RUNNING"}:
+                raise RuntimeError(f"{self.id}: connector {name} is {states}")
+
     def stop_consumers(self) -> None:
         for c in CONSUMERS:
             sh("docker", "stop", "-t", "120", self.container(c))  # SIGTERM: finish the batch
@@ -197,12 +204,15 @@ def run(scenario: str, n: int, seed: int) -> dict[str, Any]:
     queue = sqs.get_queue_url(QueueName=DLQ)["QueueUrl"]
     sqs.purge_queue(QueueUrl=queue)
     print(f"[{r.id}] reset", flush=True)
+    # Earlier runs' topics go first: the emulated MSK refuses new partitions once it is short of memory.
+    r.rpk("topic", "delete", "-r", "^lp_.*", check=False)
     r.app("source", "reset")
     r.start_consumers()
     try:
         print(f"[{r.id}] workload: {n:,} transactions", flush=True)
         SCENARIOS[scenario](r)
         r.drain()
+        r.check_connectors()
     finally:
         r.stop_consumers()
     attributes = sqs.get_queue_attributes(QueueUrl=queue, AttributeNames=["ApproximateNumberOfMessages"])
