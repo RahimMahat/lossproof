@@ -1,6 +1,6 @@
 {
   "consumer": "naive",
-  "source_lsn": "0/99380B0",
+  "source_lsn": "0/DA902E8",
   "tables": {
     "customers": {
       "source_rows": 1980,
@@ -20,8 +20,8 @@
     },
     "order_items": {
       "source_rows": 8984,
-      "lake_rows": 1975,
-      "missing": 7009,
+      "lake_rows": 1911,
+      "missing": 7073,
       "ghost": 0,
       "stale": 0,
       "duplicate": 0
@@ -36,5 +36,5 @@
     }
   },
   "source_rows": 16382,
-  "wrong_rows": 8255
+  "wrong_rows": 8319
 }

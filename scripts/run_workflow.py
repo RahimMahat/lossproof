@@ -28,3 +28,5 @@ print(json.dumps(json.loads(r.get("output") or "{}"), indent=1))
 cw = boto3.client("cloudwatch", **kw)
 print(sorted({m["MetricName"] for m in cw.list_metrics(Namespace="Lossproof")["Metrics"]}))
 print(boto3.client("s3", **kw).list_objects_v2(Bucket="lossproof-lake", Prefix="reports/").get("KeyCount"))
+if r["status"] != "SUCCEEDED":
+    raise SystemExit(1)

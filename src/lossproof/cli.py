@@ -152,5 +152,9 @@ def chaos(
     from lossproof import chaos as harness
     from lossproof import config
 
-    for name in list(harness.SCENARIOS) if scenario == "all" else [scenario]:
+    results = [
         harness.run(name, n, config.SEED if seed is None else seed)
+        for name in (list(harness.SCENARIOS) if scenario == "all" else [scenario])
+    ]
+    # The careless consumer is expected to diverge. The correct one never may.
+    raise typer.Exit(1 if any(r["consumers"]["correct"]["wrong_rows"] for r in results) else 0)

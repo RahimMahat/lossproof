@@ -1,6 +1,6 @@
 {
   "scenario": "schema_change",
-  "run": "schema_change_1791513617",
+  "run": "schema_change_1791518991",
   "transactions": 20000,
   "seed": 7,
   "faults": 2,
@@ -8,7 +8,7 @@
   "consumers": {
     "naive": {
       "source_rows": 16382,
-      "wrong_rows": 8255,
+      "wrong_rows": 8319,
       "tables": {
         "customers": {
           "source_rows": 1980,
@@ -28,8 +28,8 @@
         },
         "order_items": {
           "source_rows": 8984,
-          "lake_rows": 1975,
-          "missing": 7009,
+          "lake_rows": 1911,
+          "missing": 7073,
           "ghost": 0,
           "stale": 0,
           "duplicate": 0

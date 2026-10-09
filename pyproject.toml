@@ -26,9 +26,12 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "altair>=6.3.0",
     "mypy>=2.4.0",
+    "pandas>=3.0.6",
     "pytest>=9.1.1",
     "ruff>=0.16.10",
+    "streamlit>=1.65.0",
 ]
 
 [tool.ruff]

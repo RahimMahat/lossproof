@@ -1,6 +1,6 @@
 {
   "consumer": "naive",
-  "source_lsn": "0/60DE568",
+  "source_lsn": "0/8EA5B68",
   "tables": {
     "customers": {
       "source_rows": 1987,

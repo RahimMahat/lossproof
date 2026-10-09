@@ -1,36 +1,36 @@
 {
   "scenario": "crash",
-  "run": "crash_1791513942",
+  "run": "crash_1791518383",
   "transactions": 20000,
   "seed": 11,
-  "faults": 5,
+  "faults": 6,
   "dead_letters": 0,
   "consumers": {
     "naive": {
       "source_rows": 15168,
-      "wrong_rows": 1012,
+      "wrong_rows": 439,
       "tables": {
         "customers": {
           "source_rows": 1959,
-          "lake_rows": 1904,
-          "missing": 55,
+          "lake_rows": 1916,
+          "missing": 43,
           "ghost": 0,
-          "stale": 72,
+          "stale": 32,
           "duplicate": 0
         },
         "orders": {
           "source_rows": 3407,
-          "lake_rows": 3391,
-          "missing": 64,
-          "ghost": 48,
-          "stale": 77,
+          "lake_rows": 3407,
+          "missing": 0,
+          "ghost": 0,
+          "stale": 0,
           "duplicate": 0
         },
         "order_items": {
           "source_rows": 8220,
-          "lake_rows": 7928,
-          "missing": 494,
-          "ghost": 202,
+          "lake_rows": 7974,
+          "missing": 305,
+          "ghost": 59,
           "stale": 0,
           "duplicate": 0
         },

@@ -1,0 +1,40 @@
+{
+  "consumer": "correct",
+  "source_lsn": "0/857BD60",
+  "tables": {
+    "customers": {
+      "source_rows": 9847,
+      "lake_rows": 9847,
+      "missing": 0,
+      "ghost": 0,
+      "stale": 0,
+      "duplicate": 0
+    },
+    "orders": {
+      "source_rows": 17631,
+      "lake_rows": 17631,
+      "missing": 0,
+      "ghost": 0,
+      "stale": 0,
+      "duplicate": 0
+    },
+    "order_items": {
+      "source_rows": 42407,
+      "lake_rows": 42407,
+      "missing": 0,
+      "ghost": 0,
+      "stale": 0,
+      "duplicate": 0
+    },
+    "payments": {
+      "source_rows": 8077,
+      "lake_rows": 8077,
+      "missing": 0,
+      "ghost": 0,
+      "stale": 0,
+      "duplicate": 0
+    }
+  },
+  "source_rows": 77962,
+  "wrong_rows": 0
+}

@@ -52,10 +52,31 @@ class Run:
         args = ["source", "generate", "--n", str(upto), "--skip", str(skip), "--seed", str(self.seed)]
         self.app(*args, *(["--evolve-at", str(evolve_at)] if evolve_at is not None else []))
 
-    def generate_in_background(self) -> subprocess.Popen[bytes]:
+    def generate_in_background(
+        self, upto: int | None = None, skip: int = 0, evolve_at: int | None = None
+    ) -> subprocess.Popen[bytes]:
         cmd = ["docker", "compose", "run", "--rm", "-T", "-e", f"LOSSPROOF_RUN={self.id}", "app"]
-        cmd += ["source", "generate", "--n", str(self.n), "--seed", str(self.seed)]
+        cmd += [
+            "source",
+            "generate",
+            "--n",
+            str(upto or self.n),
+            "--skip",
+            str(skip),
+            "--seed",
+            str(self.seed),
+        ]
+        cmd += ["--evolve-at", str(evolve_at)] if evolve_at is not None else []
         return subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    def crash_while(self, workload: subprocess.Popen[bytes]) -> None:
+        """Kill the consumers every few seconds for as long as the workload runs, so kills land under load."""
+        time.sleep(5)
+        while workload.poll() is None:
+            self.crash()
+            time.sleep(self.rng.uniform(8, 14))
+        if workload.returncode:
+            raise RuntimeError("the workload failed")
 
     def rpk(self, *args: str, stdin: str | None = None, check: bool = True) -> str:
         return sh("docker", "exec", "-i", self.msk, "rpk", *args, stdin=stdin, check=check)
@@ -74,7 +95,7 @@ class Run:
             int(parts[-1]) for line in out.splitlines() if (parts := line.split()) and parts[0].isdigit()
         )
 
-    def drain(self, timeout: float = 600) -> None:
+    def drain(self, timeout: float = 1800) -> None:
         """Wait until Debezium has stopped producing and every consumer has committed to the end."""
         # ponytail: "quiet for 8 seconds" stands in for comparing the slot's flushed LSN with the WAL head.
         deadline, last, quiet_since = time.monotonic() + timeout, -1, time.monotonic()
@@ -152,14 +173,7 @@ def redelivery(run: Run) -> None:
 
 
 def crash(run: Run) -> None:
-    """Kill the consumers every few seconds for as long as the workload runs, so kills land under load."""
-    workload = run.generate_in_background()
-    time.sleep(5)
-    while workload.poll() is None:
-        run.crash()
-        time.sleep(run.rng.uniform(8, 14))
-    if workload.returncode:
-        raise RuntimeError("the workload failed")
+    run.crash_while(run.generate_in_background())
 
 
 def poison(run: Run) -> None:
@@ -196,6 +210,24 @@ def resnapshot(run: Run) -> None:
     run.faults += 1
 
 
+def everything(run: Run) -> None:
+    """All of it in one run: a schema change, crashes throughout, a lost slot, bad messages, compaction."""
+    evolve, a, b = run.n // 4, run.n * 4 // 10, run.n * 45 // 100
+    run.crash_while(run.generate_in_background(a, 0, evolve))
+    run.faults += 2  # the added and the widened column
+    run.app("source", "disconnect")
+    run.generate(b, a, evolve)  # the gap nothing captures
+    run.app("source", "connect", "--generation", "2")
+    run.faults += 1
+    run.poison(20)
+    workload = run.generate_in_background(run.n, b, evolve)
+    run.app("task", "maintain")
+    run.faults += 1
+    run.crash_while(workload)
+    run.app("task", "maintain")
+    run.faults += 1
+
+
 SCENARIOS: dict[str, Callable[[Run], None]] = {
     "quiet": quiet,
     "redelivery": redelivery,
@@ -204,6 +236,7 @@ SCENARIOS: dict[str, Callable[[Run], None]] = {
     "maintenance": maintenance,
     "schema_change": schema_change,
     "resnapshot": resnapshot,
+    "everything": everything,
 }
 
 
