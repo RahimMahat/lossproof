@@ -6,6 +6,7 @@ cd "$(dirname "$0")/.."
 docker compose up -d floci
 until curl -sf -m 3 http://localhost:4566/_floci/health >/dev/null; do sleep 1; done
 
+docker compose --profile pipeline build app   # the Lambda tasks run from this image
 terraform -chdir=infra init -input=false >/dev/null
 terraform -chdir=infra apply -auto-approve -input=false
 
@@ -20,6 +21,8 @@ if [ "$(docker exec "$pg" psql -U lp -d shop -Atc 'show wal_level')" != logical 
   until docker exec "$pg" pg_isready -U lp -d shop >/dev/null 2>&1; do sleep 1; done
 fi
 
-docker compose --profile pipeline up -d --build connect
+docker compose --profile pipeline up -d connect
 until docker compose exec -T connect curl -sf http://localhost:8083/connectors >/dev/null 2>&1; do sleep 2; done
 docker compose run --rm app source reset
+docker compose run --rm app lake-reset correct
+docker compose --profile pipeline up -d consumer

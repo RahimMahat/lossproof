@@ -129,6 +129,14 @@ def reconcile(consumer: str, out: Path = typer.Option(None, help="Also write the
     raise typer.Exit(1 if result["wrong_rows"] else 0)
 
 
+@app.command("task")
+def task(name: str) -> None:
+    """Run one maintenance task (maintain, reconcile) here instead of in its Lambda."""
+    from lossproof import tasks
+
+    typer.echo(json.dumps(tasks.TASKS[name]()))
+
+
 @app.command("chaos")
 def chaos(
     scenario: str = typer.Argument("all", help="A scenario name, or 'all'."),

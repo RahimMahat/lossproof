@@ -11,12 +11,16 @@
 7. When a new snapshot ends, rows it did not refresh are tombstoned: they were deleted while
    nothing was listening.
 
+8. If another writer (the maintenance task) commits first, the batch is read again from the
+   lake's offsets and applied to the table as it now is.
+
 Anything else that goes wrong stops the consumer. It restarts from the last commit.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import signal
 import time
 from typing import Any
@@ -26,6 +30,7 @@ import pyarrow as pa
 from lossproof import config, lake
 from lossproof.consume.events import Change, parse
 
+log = logging.getLogger(__name__)
 SUFFIX = "correct"
 BATCH = 2000
 OFFSETS = "lossproof.offsets"
@@ -129,6 +134,9 @@ def quarantine(sqs: Any, queue_url: str, msg: Any, error: Exception) -> None:
 def run(until_idle: float | None = None) -> int:
     """Consume until stopped, or until no message has arrived for ``until_idle`` seconds."""
     from confluent_kafka import OFFSET_BEGINNING, Consumer, TopicPartition
+    from pyiceberg.exceptions import CommitFailedException, ValidationException
+
+    from lossproof.tasks import put_metrics
 
     stopping = False
 
@@ -189,8 +197,14 @@ def run(until_idle: float | None = None) -> int:
             # snapshot's log position, which is not older than the tombstone. The table that carried
             # the end marker commits last, so a crash part-way replays the marker and purges again.
             tables = list(offsets) if snapshot_end is None else [*lake.TABLES]
-            for table in sorted(tables, key=lambda t: t == snapshot_table):
-                write(cat, table, changes.get(table, []), offsets.get(table, {}), snapshot_end)
+            try:
+                for table in sorted(tables, key=lambda t: t == snapshot_table):
+                    write(cat, table, changes.get(table, []), offsets.get(table, {}), snapshot_end)
+            except (CommitFailedException, ValidationException):  # rule 8
+                log.warning("another writer committed first; starting again from the lake's offsets")
+                consumer.unsubscribe()
+                consumer.subscribe([prefix + t for t in lake.TABLES], on_assign=start_from_lake)
+                continue
             # The lake is the record. This commit only lets Kafka tooling show the lag.
             consumer.commit(
                 offsets=[
@@ -198,7 +212,11 @@ def run(until_idle: float | None = None) -> int:
                 ],
                 asynchronous=False,
             )
-            applied += sum(len(c) for c in changes.values())
+            batch = [c for cs in changes.values() for c in cs]
+            if batch:
+                freshness = time.time() - max(c.ts_ms for c in batch) / 1000
+                put_metrics({"ChangesApplied": len(batch), "FreshnessSeconds": round(freshness, 3)})
+            applied += len(batch)
             last_message = time.monotonic()
     finally:
         consumer.close()

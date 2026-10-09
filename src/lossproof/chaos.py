@@ -169,6 +169,16 @@ def poison(run: Run) -> None:
     run.generate(run.n, half)
 
 
+def maintenance(run: Run) -> None:
+    """Compact and expire snapshots again and again while the consumer is writing."""
+    workload = run.generate_in_background()
+    while workload.poll() is None:
+        run.app("task", "maintain")
+        run.faults += 1
+    if workload.returncode:
+        raise RuntimeError("the workload failed")
+
+
 def schema_change(run: Run) -> None:
     run.generate(run.n, 0, evolve_at=run.n // 2)
     run.faults += 2  # one added column, one widened column
@@ -191,6 +201,7 @@ SCENARIOS: dict[str, Callable[[Run], None]] = {
     "redelivery": redelivery,
     "crash": crash,
     "poison": poison,
+    "maintenance": maintenance,
     "schema_change": schema_change,
     "resnapshot": resnapshot,
 }
@@ -204,6 +215,8 @@ def run(scenario: str, n: int, seed: int) -> dict[str, Any]:
     queue = sqs.get_queue_url(QueueName=DLQ)["QueueUrl"]
     sqs.purge_queue(QueueUrl=queue)
     print(f"[{r.id}] reset", flush=True)
+    # A scenario takes over the platform: the main stream's consumer and connector make way.
+    sh("docker", "compose", "stop", "consumer", check=False)
     # Earlier runs' topics go first: the emulated MSK refuses new partitions once it is short of memory.
     r.rpk("topic", "delete", "-r", "^lp_.*", check=False)
     r.app("source", "reset")

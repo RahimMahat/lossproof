@@ -35,6 +35,7 @@ provider "aws" {
     logs           = var.endpoint
     iam            = var.endpoint
     sts            = var.endpoint
+    ecr            = var.endpoint
   }
 }
 

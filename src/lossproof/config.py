@@ -9,6 +9,7 @@ from typing import Any
 AWS_ENDPOINT = os.environ.get("AWS_ENDPOINT_URL", "http://floci:4566")
 KAFKA_BOOTSTRAP = os.environ.get("LOSSPROOF_KAFKA", "")
 PG_HOST = os.environ.get("LOSSPROOF_PG_HOST", "")
+PG_PORT = os.environ.get("LOSSPROOF_PG_PORT", "5432")
 CONNECT_URL = os.environ.get("LOSSPROOF_CONNECT", "http://connect:8083")
 
 SOURCE_SECRET = "lossproof/source-db"
@@ -42,4 +43,4 @@ def source_credentials() -> dict[str, str]:
 
 def source_dsn() -> str:
     c = source_credentials()
-    return f"host={PG_HOST} port=5432 user={c['username']} password={c['password']} dbname={c['dbname']}"
+    return f"host={PG_HOST} port={PG_PORT} user={c['username']} password={c['password']} dbname={c['dbname']}"

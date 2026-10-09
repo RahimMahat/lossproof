@@ -3,11 +3,15 @@
 #   scripts/up.sh             start everything (Floci, Terraform, Debezium)
 #   docker compose run --rm app source generate
 #   scripts/down.sh           stop and delete everything
+name: lossproof
+
 services:
   floci:
     image: floci/floci:2.2.0
     ports:
       - "4566:4566"
+    environment:
+      FLOCI_SERVICES_LAMBDA_DOCKER_NETWORK: lossproof_default   # Lambdas must reach S3 and Postgres
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
@@ -24,13 +28,24 @@ services:
       STATUS_STORAGE_TOPIC: connect-status
       HEAP_OPTS: -Xms256m -Xmx768m
 
+  # Named like an ECR image. Floci runs a Lambda straight from a local image with the function's URI.
   app:
+    image: 000000000000.dkr.ecr.us-east-1.amazonaws.com/lossproof:latest
     build: .
     profiles: [pipeline]
-    environment:
+    environment: &app-env
       AWS_ENDPOINT_URL: http://floci:4566
       LOSSPROOF_KAFKA: ${LOSSPROOF_KAFKA:-}
       LOSSPROOF_PG_HOST: ${LOSSPROOF_PG_HOST:-}
+      LOSSPROOF_RUN: main   # the long-lived stream; chaos scenarios override this per run
     volumes:
       - ./src:/app/src   # edit without rebuilding
       - ./results:/app/results
+
+  # The long-lived correct consumer for the main stream. On AWS this is an ECS service.
+  consumer:
+    image: 000000000000.dkr.ecr.us-east-1.amazonaws.com/lossproof:latest
+    profiles: [pipeline]
+    restart: unless-stopped
+    command: ["consume", "correct"]
+    environment: *app-env
